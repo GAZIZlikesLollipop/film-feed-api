@@ -87,9 +87,25 @@ func getMovie(c *gin.Context) {
 
 func deleteMovie(c *gin.Context) {
 	id := c.Param("id")
-	if err := db.Delete(&Movie{}, id).Error; err != nil {
-		log.Println("Фильм не найден", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Фильм не найден"})
+	var movie Movie
+	if err := db.First(&movie, id).Error; err != nil {
+		log.Println("Фильм не найден: ", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Фильм не найден"})
+		return
+	}
+	if err := db.Model(&movie).Association("Members").Clear(); err != nil {
+		log.Printf("Ошибка очистки связей участников: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка очистки связей участников"})
+		return
+	}
+	if err := db.Model(&movie).Association("Categories").Clear(); err != nil {
+		log.Printf("Ошибка очистки связей категорий: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка очистки связей категорий"})
+		return
+	}
+	if err := db.Delete(&movie).Error; err != nil {
+		log.Println("Ошибка удаления фильма: ", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ошибка удаления фильма"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Фильм успешно удален"})
@@ -112,9 +128,9 @@ func getIDs(data interface{}) []int64 {
 func updateMovie(c *gin.Context) {
 	id := c.Param("id")
 	var movie Movie
-	if err := db.First(&movie, id).Error; err != nil {
+	if err := db.Preload("Categories").Preload("Members").First(&movie, id).Error; err != nil {
 		log.Println("Фильм не найден", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Фильм не найден"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Фильм не найден"})
 		return
 	}
 	var updates map[string]interface{}
