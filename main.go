@@ -62,6 +62,8 @@ func main() {
 		log.Fatal("Ошибка миграции: ", err)
 	}
 
+	r.Static("/media", "./static")
+
 	r.GET("/movies", getMovies)
 	r.POST("/movies", addMovie)
 	r.GET("/movies/:id", getMovie)
@@ -71,6 +73,7 @@ func main() {
 	r.GET("/categories", getCategories)
 	r.POST("/categories", addCategory)
 	r.DELETE("/categories/:id", deleteCategory)
+	r.PUT("/categories/:id", updateCategory)
 
 	r.Run(":8080")
 }

@@ -55,3 +55,26 @@ func addCategory(c *gin.Context) {
 	}
 	c.JSON(http.StatusCreated, category)
 }
+
+func updateCategory(c *gin.Context) {
+	id := c.Param("id")
+	var category Category
+	if err := db.First(&category, id).Error; err != nil {
+		log.Println("Категория не найдена", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Категория не найдена"})
+		return
+	}
+	var newCategory Category
+	if err := c.ShouldBindJSON(&newCategory); err != nil {
+		log.Printf("Неверные данные: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверные данные"})
+		return
+	}
+	category.Name = newCategory.Name
+	if err := db.Save(&category).Error; err != nil {
+		log.Println("Ошибка обновления категории: ", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка обновления категории"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "категория успешно обновлена"})
+}
