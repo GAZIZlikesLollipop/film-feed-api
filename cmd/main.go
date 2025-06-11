@@ -24,7 +24,7 @@ func main() {
 		return
 	}
 
-	if err := utils.Db.AutoMigrate(&models.Movie{}, &models.Member{}, &models.Category{}, &models.MovieMember{}); err != nil {
+	if err := utils.Db.AutoMigrate(&models.Movie{}, &models.Member{}, &models.Genre{}, &models.MovieMember{}); err != nil {
 		log.Fatal("Ошибка миграции: ", err)
 	}
 
@@ -36,10 +36,10 @@ func main() {
 	r.DELETE("/movies/:id", handlers.DeleteMovie)
 	r.PATCH("/movies/:id", handlers.UpdateMovie)
 
-	r.GET("/categories", handlers.GetCategories)
-	r.POST("/categories", handlers.AddCategory)
-	r.DELETE("/categories/:id", handlers.DeleteCategory)
-	r.PUT("/categories/:id", handlers.UpdateCategory)
+	r.GET("/genres", handlers.GetGenres)
+	r.POST("/genres", handlers.AddGenre)
+	r.DELETE("/genres/:id", handlers.DeleteGenre)
+	r.PUT("/genres/:id", handlers.UpdateGenre)
 
 	r.GET("/members", handlers.GetMembers)
 	r.POST("/members", handlers.AddMember)

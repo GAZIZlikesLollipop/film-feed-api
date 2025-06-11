@@ -49,7 +49,7 @@ func AddMovie(c *gin.Context) {
 	}
 
 	categoryStr := c.PostForm("categories")
-	var categories []models.Category
+	var categories []models.Genre
 	if categoryStr != "" {
 		ids := strings.Split(categoryStr, ",")
 		for _, idStr := range ids {
@@ -59,7 +59,7 @@ func AddMovie(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Неверный ID категории: %s", idStr)})
 				return
 			}
-			var cat models.Category
+			var cat models.Genre
 			if err := utils.Db.First(&cat, id).Error; err != nil {
 				log.Printf("Категория %d не найдена: %v", id, err)
 				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Категория %d не найдена", id)})
@@ -68,7 +68,7 @@ func AddMovie(c *gin.Context) {
 			categories = append(categories, cat)
 		}
 	} else {
-		categories = []models.Category{}
+		categories = []models.Genre{}
 	}
 
 	movieMemberStr := c.PostForm("movieMembers")
@@ -103,7 +103,7 @@ func AddMovie(c *gin.Context) {
 		Description:  description,
 		Country:      country,
 		Year:         year,
-		Categories:   categories,
+		Genres:       categories,
 		Budget:       budget,
 		BoxOffice:    boxOffice,
 		MovieMembers: movieMembers,
@@ -317,7 +317,7 @@ func UpdateMovie(c *gin.Context) {
 
 	if categoryStr := c.PostForm("categories"); categoryStr != "" {
 		ids := strings.Split(categoryStr, ",")
-		var newCategories []models.Category
+		var newCategories []models.Genre
 		for _, idStr := range ids {
 			id, err := strconv.ParseInt(idStr, 10, 64)
 			if err != nil {
@@ -325,7 +325,7 @@ func UpdateMovie(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Неверный ID категории: %s", idStr)})
 				return
 			}
-			var cat models.Category
+			var cat models.Genre
 			if err := utils.Db.First(&cat, id).Error; err != nil {
 				log.Printf("Категория %d не найдена: %v", id, err)
 				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Категория %d не найдена", id)})
@@ -369,7 +369,7 @@ func UpdateMovie(c *gin.Context) {
 		return
 	}
 
-	if err := utils.Db.Preload("Categories").Preload("MovieMembers.Member").First(&movie, id); err != nil {
+	if err := utils.Db.Preload("Categories").Preload("MovieMembers.Member").First(&movie, id).Error; err != nil {
 		log.Println("Ошиибка поулчения фильма: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошиибка поулчения фильма: ", err)})
 		return
