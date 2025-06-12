@@ -48,27 +48,27 @@ func AddMovie(c *gin.Context) {
 		return
 	}
 
-	categoryStr := c.PostForm("categories")
-	var categories []models.Genre
-	if categoryStr != "" {
-		ids := strings.Split(categoryStr, ",")
+	genresStr := c.PostForm("genres")
+	var genres []models.Genre
+	if genresStr != "" {
+		ids := strings.Split(genresStr, ",")
 		for _, idStr := range ids {
 			id, err := strconv.ParseInt(idStr, 10, 64)
 			if err != nil {
-				log.Printf("Неверный ID категории: %s", idStr)
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Неверный ID категории: %s", idStr)})
+				log.Printf("Неверный ID жанры: %s", idStr)
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Неверный ID жанры: %s", idStr)})
 				return
 			}
 			var cat models.Genre
 			if err := utils.Db.First(&cat, id).Error; err != nil {
-				log.Printf("Категория %d не найдена: %v", id, err)
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Категория %d не найдена", id)})
+				log.Printf("Жанр %d не найдена: %v", id, err)
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Жанр %d не найдена", id)})
 				return
 			}
-			categories = append(categories, cat)
+			genres = append(genres, cat)
 		}
 	} else {
-		categories = []models.Genre{}
+		genres = []models.Genre{}
 	}
 
 	movieMemberStr := c.PostForm("movieMembers")
@@ -78,14 +78,6 @@ func AddMovie(c *gin.Context) {
 			log.Printf("Неверный формат movieMembers: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Неверный формат movieMembers: %v", err)})
 			return
-		}
-		for ind, mm := range movieMembers {
-			var member models.Member
-			if err := utils.Db.First(&member, mm.MemberID).Error; err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Участник %d не найден", mm.MemberID)})
-				return
-			}
-			movieMembers[ind].Member = member
 		}
 	} else {
 		movieMembers = []models.MovieMember{}
@@ -103,13 +95,13 @@ func AddMovie(c *gin.Context) {
 		Description:  description,
 		Country:      country,
 		Year:         year,
-		Genres:       categories,
+		Genres:       genres,
 		Budget:       budget,
 		BoxOffice:    boxOffice,
 		MovieMembers: movieMembers,
 	}
 
-	if err := utils.Db.Preload("Categories").Preload("MovieMembers.Member").Create(&movie).Error; err != nil {
+	if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member").Create(&movie).Error; err != nil {
 		log.Println("Ошибка добавленя фильма", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка добавелния фильма"})
 		return
@@ -120,7 +112,7 @@ func AddMovie(c *gin.Context) {
 
 func GetMovies(c *gin.Context) {
 	var movies []models.Movie
-	if err := utils.Db.Preload("Categories").Preload("MovieMembers.Member").Find(&movies).Error; err != nil {
+	if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member").Find(&movies).Error; err != nil {
 		log.Println("Ошибка получения фильмов: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка получения фильмов"})
 		return
@@ -131,7 +123,7 @@ func GetMovies(c *gin.Context) {
 func GetMovie(c *gin.Context) {
 	id := c.Param("id")
 	var movie models.Movie
-	if err := utils.Db.Preload("MovieMembers.Member").Preload("Categories").First(&movie, id); err != nil {
+	if err := utils.Db.Preload("MovieMembers.Member").Preload("Genres").First(&movie, id); err != nil {
 		log.Println("Фильм не найден", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Фильм не найден"})
 		return
@@ -195,7 +187,7 @@ func DeleteMovie(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка очистки связей участников"})
 		return
 	}
-	if err := utils.Db.Model(&movie).Association("Categories").Clear(); err != nil {
+	if err := utils.Db.Model(&movie).Association("Genres").Clear(); err != nil {
 		log.Printf("Ошибка очистки связей категорий: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка очистки связей категорий"})
 		return
@@ -211,7 +203,7 @@ func DeleteMovie(c *gin.Context) {
 func UpdateMovie(c *gin.Context) {
 	id := c.Param("id")
 	var movie models.Movie
-	if err := utils.Db.Preload("Categories").Preload("MovieMembers.Member").First(&movie, id).Error; err != nil {
+	if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member").First(&movie, id).Error; err != nil {
 		log.Println("Фильм не найден", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Фильм не найден"})
 		return
@@ -315,9 +307,9 @@ func UpdateMovie(c *gin.Context) {
 		movie.TrailerURL = fmt.Sprintf("http://192.168.1.9:8080/%s", filePath)
 	}
 
-	if categoryStr := c.PostForm("categories"); categoryStr != "" {
-		ids := strings.Split(categoryStr, ",")
-		var newCategories []models.Genre
+	if genreStr := c.PostForm("genres"); genreStr != "" {
+		ids := strings.Split(genreStr, ",")
+		var newGenres []models.Genre
 		for _, idStr := range ids {
 			id, err := strconv.ParseInt(idStr, 10, 64)
 			if err != nil {
@@ -331,9 +323,9 @@ func UpdateMovie(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Категория %d не найдена", id)})
 				return
 			}
-			newCategories = append(newCategories, cat)
+			newGenres = append(newGenres, cat)
 		}
-		if err := utils.Db.Model(&movie).Association("Categories").Replace(newCategories); err != nil {
+		if err := utils.Db.Model(&movie).Association("Genres").Replace(newGenres); err != nil {
 			log.Printf("Ошибка обновления категорий: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка обновления категорий"})
 			return
@@ -346,15 +338,6 @@ func UpdateMovie(c *gin.Context) {
 			log.Println("Ошибка парсинга участников фиильмов: ", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintln("Ошибка парсинга участников фиильмов: ", err)})
 			return
-		}
-		for ind, mm := range movieMembers {
-			var member models.Member
-			if err := utils.Db.First(&member, mm.MemberID).Error; err != nil {
-				log.Printf("Участник %d не найден: %v", mm.MemberID, err)
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Участник %d не найден", mm.MemberID)})
-				return
-			}
-			movieMembers[ind].Member = member
 		}
 		if err := utils.Db.Model(&movie).Association("MovieMembers").Replace(movieMembers); err != nil {
 			log.Printf("Ошибка обновления участников: %v", err)
@@ -369,7 +352,7 @@ func UpdateMovie(c *gin.Context) {
 		return
 	}
 
-	if err := utils.Db.Preload("Categories").Preload("MovieMembers.Member").First(&movie, id).Error; err != nil {
+	if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member").First(&movie, id).Error; err != nil {
 		log.Println("Ошиибка поулчения фильма: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошиибка поулчения фильма: ", err)})
 		return

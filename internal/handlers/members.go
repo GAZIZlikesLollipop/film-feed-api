@@ -33,16 +33,16 @@ func AddMember(c *gin.Context) {
 	if featuredFilmsStr != "" {
 		ids := strings.Split(featuredFilmsStr, ",")
 		for _, idStr := range ids {
-			id, err := strconv.ParseInt(idStr, 10, 64)
+			movieID, err := strconv.ParseInt(idStr, 10, 64)
 			if err != nil {
 				log.Printf("Неверный ID участника: %s", idStr)
 				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Неверный ID участника: %s", idStr)})
 				return
 			}
 			var movie models.Movie
-			if err := utils.Db.First(&movie, id); err != nil {
-				log.Printf("Фильм %d не найдена: %v", id, err)
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Фильм %d не найдена", id)})
+			if err := utils.Db.First(&movie, movieID); err != nil {
+				log.Printf("Фильм %d не найдена: %v", movieID, err)
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Фильм %d не найдена", movieID)})
 				return
 			}
 			featuredFilms = append(featuredFilms, movie)
@@ -192,16 +192,17 @@ func UpdateMember(c *gin.Context) {
 				return
 			}
 			var movie models.Movie
-			if err := utils.Db.First(&movie, movieID); err != nil {
+			if err := utils.Db.First(&movie, movieID).Error; err != nil {
 				log.Printf("Фильм %d не найдена: %v", movieID, err)
 				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Фильм %d не найдена", movieID)})
 				return
 			}
 			featuredFilms = append(featuredFilms, movie)
 		}
-		if len(featuredFilms) > 0 {
-			member.FeaturedFilms = featuredFilms
+		if len(featuredFilms) <= 0 {
+			featuredFilms = []models.Movie{}
 		}
+		member.FeaturedFilms = featuredFilms
 	}
 
 	if _, err := c.FormFile("photo"); err == nil {
