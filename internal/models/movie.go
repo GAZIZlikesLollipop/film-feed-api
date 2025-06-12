@@ -24,7 +24,6 @@ type Movie struct {
 	Budget       int64         `json:"budget" gorm:"default:0"`
 	BoxOffice    int64         `json:"boxOffice" gorm:"default:0"`
 	MovieMembers []MovieMember `json:"movieMembers" gorm:"foreignKey:MovieID"`
-	Members      []Member      `json:"members" gorm:"many2many:movie_members;"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`

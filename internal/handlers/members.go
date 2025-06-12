@@ -28,7 +28,7 @@ func AddMember(c *gin.Context) {
 	biography := c.PostForm("biography")
 	nationality := c.PostForm("nationality")
 
-	featuredFilmsStr := c.PostForm("FeaturedFilms")
+	featuredFilmsStr := c.PostForm("featuredFilms")
 	var featuredFilms []models.Movie
 	if featuredFilmsStr != "" {
 		ids := strings.Split(featuredFilmsStr, ",")
@@ -181,7 +181,7 @@ func UpdateMember(c *gin.Context) {
 		member.Nationality = nationality
 	}
 
-	if featuredFilmsStr := c.PostForm("FeaturedFilms"); featuredFilmsStr != "" {
+	if featuredFilmsStr := c.PostForm("featuredFilms"); featuredFilmsStr != "" {
 		var featuredFilms []models.Movie
 		ids := strings.Split(featuredFilmsStr, ",")
 		for _, idStr := range ids {
@@ -201,6 +201,11 @@ func UpdateMember(c *gin.Context) {
 		}
 		if len(featuredFilms) <= 0 {
 			featuredFilms = []models.Movie{}
+		}
+		if err := utils.Db.Model(&member).Association("FeaturedFilms").Replace(featuredFilms); err != nil {
+			log.Printf("Ошибка обновления фильмов: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка обновления фильмов"})
+			return
 		}
 		member.FeaturedFilms = featuredFilms
 	}
