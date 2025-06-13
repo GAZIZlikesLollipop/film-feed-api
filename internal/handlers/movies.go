@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -33,21 +34,21 @@ func AddMovie(c *gin.Context) {
 	budget, _ := strconv.ParseInt(c.PostForm("budget"), 10, 64)
 	boxOffice, _ := strconv.ParseInt(c.PostForm("boxOffice"), 10, 64)
 
-	moviePath, err := utils.SaveFile(c, "movieURL", name, "media/movie-videos")
+	moviePath, err := utils.SaveFile(c, "movieURL", name, "movie-videos")
 	if err != nil {
 		log.Println("Ошибка получения пути файла: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
 		return
 	}
 
-	trailerPath, err := utils.SaveFile(c, "trailerURL", fmt.Sprintf("%s-trailer", name), "media/movie-trailers")
+	trailerPath, err := utils.SaveFile(c, "trailerURL", fmt.Sprintf("%s-trailer", name), "movie-trailers")
 	if err != nil {
 		log.Println("Ошибка получения пути файла: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
 		return
 	}
 
-	posterPath, err := utils.SaveFile(c, "posterURL", name, "media/movie-posters")
+	posterPath, err := utils.SaveFile(c, "posterURL", name, "movie-posters")
 	if err != nil {
 		log.Println("Ошибка получения пути файла: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
@@ -117,7 +118,7 @@ func AddMovie(c *gin.Context) {
 		MovieMembers: movieMembers,
 	}
 
-	if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member").Create(&movie).Error; err != nil {
+	if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member.FeaturedFilms").Create(&movie).Error; err != nil {
 		log.Println("Ошибка добавленя фильма", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка добавелния фильма"})
 		return
@@ -128,7 +129,7 @@ func AddMovie(c *gin.Context) {
 
 func GetMovies(c *gin.Context) {
 	var movies []models.Movie
-	if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member").Find(&movies).Error; err != nil {
+	if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member.FeaturedFilms").Find(&movies).Error; err != nil {
 		log.Println("Ошибка получения фильмов: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка получения фильмов"})
 		return
@@ -139,7 +140,7 @@ func GetMovies(c *gin.Context) {
 func GetMovie(c *gin.Context) {
 	id := c.Param("id")
 	var movie models.Movie
-	if err := utils.Db.Preload("MovieMembers.Member").Preload("Genres").First(&movie, id); err != nil {
+	if err := utils.Db.Preload("MovieMembers.Member.FeaturedFilms").Preload("Genres").First(&movie, id); err != nil {
 		log.Println("Фильм не найден", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Фильм не найден"})
 		return
@@ -155,7 +156,12 @@ func DeleteMovie(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Фильм не найден"})
 		return
 	}
-	absolutePath := "/home/lollipop/dev/film-feed"
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Println("Ошибка получшения пользовтельской диреткории: ", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получшения пользовтельской диреткории: ", err)})
+		return
+	}
 	if movie.MovieURL != "" {
 		file, err := url.Parse(movie.MovieURL)
 		if err != nil {
@@ -164,7 +170,7 @@ func DeleteMovie(c *gin.Context) {
 			return
 		}
 
-		if err := os.Remove(fmt.Sprintf("%s%s", absolutePath, file.Path)); err != nil {
+		if err := os.Remove(filepath.Join(homeDir, file.Path)); err != nil {
 			log.Println("Ошибка удаления файла: ", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка удаления файла: ", err)})
 			return
@@ -178,7 +184,7 @@ func DeleteMovie(c *gin.Context) {
 			return
 		}
 
-		if err := os.Remove(fmt.Sprintf("%s%s", absolutePath, file.Path)); err != nil {
+		if err := os.Remove(filepath.Join(homeDir, file.Path)); err != nil {
 			log.Println("Ошибка удаления файла: ", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка удаления файла: ", err)})
 			return
@@ -192,7 +198,7 @@ func DeleteMovie(c *gin.Context) {
 			return
 		}
 
-		if err := os.Remove(fmt.Sprintf("%s%s", absolutePath, file.Path)); err != nil {
+		if err := os.Remove(filepath.Join(homeDir, file.Path)); err != nil {
 			log.Println("Ошибка удаления файла: ", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка удаления файла: ", err)})
 			return
@@ -225,8 +231,7 @@ func UpdateMovie(c *gin.Context) {
 		return
 	}
 
-	name := c.PostForm("name")
-	if name != "" {
+	if name := c.PostForm("name"); name != "" {
 		movie.Name = name
 	}
 	if durationStr := c.PostForm("duration"); durationStr != "" {
@@ -294,7 +299,7 @@ func UpdateMovie(c *gin.Context) {
 
 	if _, err := c.FormFile("movieURL"); err == nil {
 		prePath := movie.MovieURL
-		filePath, err := utils.ReplaceFile(c, prePath, "movieURL", name, "media/movie-videos")
+		filePath, err := utils.ReplaceFile(c, prePath, "movieURL", movie.Name, "movie-videos")
 		if err != nil {
 			log.Println("Ошибка получения пути файла: ", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
@@ -304,7 +309,7 @@ func UpdateMovie(c *gin.Context) {
 	}
 	if _, err := c.FormFile("posterURL"); err == nil {
 		prePath := movie.PosterURL
-		filePath, err := utils.ReplaceFile(c, prePath, "posterURL", name, "media/movie-posters")
+		filePath, err := utils.ReplaceFile(c, prePath, "posterURL", movie.Name, "movie-posters")
 		if err != nil {
 			log.Println("Ошибка получения пути файла: ", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
@@ -314,7 +319,7 @@ func UpdateMovie(c *gin.Context) {
 	}
 	if _, err := c.FormFile("trailerURL"); err == nil {
 		prePath := movie.TrailerURL
-		filePath, err := utils.ReplaceFile(c, prePath, "trailerURL", name, "media/movie-trailers")
+		filePath, err := utils.ReplaceFile(c, prePath, "trailerURL", movie.Name, "movie-trailers")
 		if err != nil {
 			log.Println("Ошибка получения пути файла: ", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
@@ -378,7 +383,7 @@ func UpdateMovie(c *gin.Context) {
 		return
 	}
 
-	if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member").First(&movie, id).Error; err != nil {
+	if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member.FeaturedFilms").First(&movie, id).Error; err != nil {
 		log.Println("Ошиибка поулчения фильма: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошиибка поулчения фильма: ", err)})
 		return

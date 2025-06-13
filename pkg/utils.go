@@ -22,24 +22,34 @@ func SaveFile(
 	name string,
 	directory string,
 ) (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Println("Ошибка получшения пользовтельской диреткории: ", err)
+		return "", err
+	}
+
+	absolutePath := filepath.Join(homeDir, "media", directory)
+
 	file, err := c.FormFile(field)
 	if err != nil {
 		log.Println("Ошиибка получения файла: ", err)
 		return "", err
 	}
 
-	if err := os.MkdirAll(directory, 0755); err != nil {
+	if err := os.MkdirAll(absolutePath, 0755); err != nil {
 		log.Println("Ошибка создания директории: ", err)
 		return "", err
 	}
 
 	fileName := fmt.Sprintf("%s-%s%s", name, uuid.New(), strings.ToLower(filepath.Ext(file.Filename)))
-	filePath := filepath.Join(directory, fileName)
+	saveFilePath := filepath.Join(absolutePath, fileName)
 
-	if err := c.SaveUploadedFile(file, filePath); err != nil {
+	if err := c.SaveUploadedFile(file, saveFilePath); err != nil {
 		log.Printf("Ошибка сохранения файла: %v", err)
 		return "", err
 	}
+
+	filePath := filepath.Join("media", directory, fileName)
 
 	return filePath, nil
 }
@@ -51,14 +61,18 @@ func ReplaceFile(
 	name string,
 	directory string,
 ) (string, error) {
-	absolutePath := "/home/lollipop/dev/film-feed"
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Println("Ошибка получшения рабочей диреткории: ", err)
+		return "", err
+	}
 	preFile, err := url.Parse(prePath)
 	if err != nil {
 		log.Println("Ошибка прасиинга Url", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошиибка парсиинга URL", err)})
 		return "", err
 	}
-	delPath := fmt.Sprintf("%s%s", absolutePath, preFile.Path)
+	delPath := filepath.Join(homeDir, preFile.Path)
 	_, exist := os.Stat(delPath)
 	if exist == nil {
 		if err := os.Remove(delPath); err != nil {
@@ -73,18 +87,22 @@ func ReplaceFile(
 		return "", err
 	}
 
-	if err := os.MkdirAll(directory, 0755); err != nil {
+	absolutePath := filepath.Join(homeDir, "media", directory)
+
+	if err := os.MkdirAll(absolutePath, 0755); err != nil {
 		log.Println("Ошибка создания директории: ", err)
 		return "", err
 	}
 
 	fileName := fmt.Sprintf("%s-%s%s", name, uuid.New(), strings.ToLower(filepath.Ext(file.Filename)))
-	filePath := filepath.Join(directory, fileName)
+	saveFilePath := filepath.Join(absolutePath, fileName)
 
-	if err := c.SaveUploadedFile(file, filePath); err != nil {
+	if err := c.SaveUploadedFile(file, saveFilePath); err != nil {
 		log.Printf("Ошибка сохранения файла: %v", err)
 		return "", err
 	}
+
+	filePath := filepath.Join("media", directory, fileName)
 
 	return filePath, nil
 }

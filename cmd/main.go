@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"os"
+	"path/filepath"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -28,7 +30,15 @@ func main() {
 		log.Fatal("Ошибка миграции: ", err)
 	}
 
-	r.Static("/media", "./media")
+	userHomeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Println("Ошибка получения домашней директории: ", err)
+		return
+	}
+
+	mediaDir := filepath.Join(userHomeDir, "media")
+
+	r.Static("/media", mediaDir)
 
 	r.GET("/movies", handlers.GetMovies)
 	r.POST("/movies", handlers.AddMovie)

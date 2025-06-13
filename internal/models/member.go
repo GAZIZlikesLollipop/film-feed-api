@@ -12,15 +12,15 @@ type MovieMember struct {
 }
 
 type Member struct {
-	Id            int64     `json:"id" gorm:"primaryKey"`
-	Name          string    `json:"name" gorm:"not null"`
-	Photo         string    `json:"photo"`
-	Roles         []string  `json:"roles" gorm:"type:text;serializer:json"`
-	BirthDate     time.Time `json:"birthDate"`
-	DeathDate     time.Time `json:"deathDate,omitempty" gorm:"default:NULL"`
-	Biography     string    `json:"biography"`
-	Nationality   string    `json:"nationality"`
-	FeaturedFilms []Movie   `json:"featuredFilms" gorm:"many2many:movie_members;joinForeignKey:MemberID;joinReferences:MovieID;"`
+	Id            int64      `json:"id" gorm:"primaryKey"`
+	Name          string     `json:"name" gorm:"not null"`
+	Photo         string     `json:"photo"`
+	Roles         []string   `json:"roles" gorm:"type:text;serializer:json"`
+	BirthDate     time.Time  `json:"birthDate"`
+	DeathDate     *time.Time `json:"deathDate" gorm:"default:NULL"`
+	Biography     string     `json:"biography"`
+	Nationality   string     `json:"nationality"`
+	FeaturedFilms []Movie    `json:"featuredFilms" gorm:"many2many:movie_members;joinForeignKey:MemberID;joinReferences:MovieID;"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`

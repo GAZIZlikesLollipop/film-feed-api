@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -54,7 +55,7 @@ func AddMember(c *gin.Context) {
 		featuredFilms = []models.Movie{}
 	}
 
-	photoPath, err := utils.SaveFile(c, "photo", name, "media/member-photos")
+	photoPath, err := utils.SaveFile(c, "photo", name, "member-photos")
 	if err != nil {
 		log.Println("Ошибка получения пути файла: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
@@ -71,15 +72,14 @@ func AddMember(c *gin.Context) {
 		FeaturedFilms: featuredFilms,
 	}
 
-	deathDateStr := c.PostForm("deathDate")
-	if deathDateStr != "" {
-		deathDate, err := time.Parse(layout, deathDateStr)
-		if err != nil {
-			log.Println("Ошибка преобразования даты: ", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка преобразования даты: ", err)})
-			return
+	if deathDateStr := c.PostForm("deathDate"); deathDateStr != "" {
+		if deathDate, err := time.Parse(layout, deathDateStr); deathDateStr != "" {
+			if err != nil {
+				member.DeathDate = nil
+			} else {
+				member.DeathDate = &deathDate
+			}
 		}
-		member.DeathDate = deathDate
 	}
 
 	if err := utils.Db.Create(&member).Error; err != nil {
@@ -123,18 +123,29 @@ func DeleteMember(c *gin.Context) {
 	}
 
 	if member.Photo != "" {
-		absolutePath := "/home/lollipop/dev/film-feed"
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			log.Println("Ошибка получшения пользовтельской диреткории: ", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получшения пользовтельской диреткории: ", err)})
+			return
+		}
 		file, err := url.Parse(member.Photo)
 		if err != nil {
 			log.Println("Ошибка прасиинга Url", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошиибка парсиинга URL", err)})
 			return
 		}
-		if err := os.Remove(fmt.Sprintf("%s%s", absolutePath, file.Path)); err != nil {
+		if err := os.Remove(filepath.Join(homeDir, file.Path)); err != nil {
 			log.Println("Ошибка удаления файла: ", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка удаления файла: ", err)})
 			return
 		}
+	}
+
+	if err := utils.Db.Model(&member).Association("FeaturedFilms").Clear(); err != nil {
+		log.Printf("Ошибка очистки связей фильмов: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка очистки связей фильмов: ", err)})
+		return
 	}
 
 	if err := utils.Db.Delete(&member).Error; err != nil {
@@ -156,8 +167,7 @@ func UpdateMember(c *gin.Context) {
 		return
 	}
 
-	name := c.PostForm("name")
-	if name != "" {
+	if name := c.PostForm("name"); name != "" {
 		member.Name = name
 	}
 	if roles := c.PostFormArray("roles"); len(roles) != 0 {
@@ -173,14 +183,15 @@ func UpdateMember(c *gin.Context) {
 		}
 		member.BirthDate = birthDate
 	}
-	deathDateStr := c.PostForm("deathDate")
-	if deathDate, err := time.Parse(layout, deathDateStr); deathDateStr != "" {
-		if err != nil {
-			log.Println("Ошибка преобразования даты: ", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка преобразования даты: ", err)})
-			return
+
+	if deathDateStr := c.PostForm("deathDate"); deathDateStr != "" {
+		if deathDate, err := time.Parse(layout, deathDateStr); deathDateStr != "" {
+			if err != nil {
+				member.DeathDate = nil
+			} else {
+				member.DeathDate = &deathDate
+			}
 		}
-		member.DeathDate = deathDate
 	}
 
 	if biography := c.PostForm("biography"); biography != "" {
@@ -221,7 +232,7 @@ func UpdateMember(c *gin.Context) {
 
 	if _, err := c.FormFile("photo"); err == nil {
 		prePath := member.Photo
-		filePath, err := utils.ReplaceFile(c, prePath, "photo", name, "media/member-photos")
+		filePath, err := utils.ReplaceFile(c, prePath, "photo", member.Name, "member-photos")
 		if err != nil {
 			log.Println("Ошибка получения пути файла: ", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
