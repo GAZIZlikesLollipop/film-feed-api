@@ -16,6 +16,12 @@ import (
 )
 
 func AddMovie(c *gin.Context) {
+	var selectedMovies []models.Movie
+	if err := utils.Db.Find(&selectedMovies).Error; err != nil {
+		log.Println("Ошибка получения фильмов: ", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка получения фильмов"})
+		return
+	}
 	name := c.PostForm("name")
 	duration, _ := strconv.Atoi(c.PostForm("duration"))
 	age, _ := strconv.Atoi(c.PostForm("age"))
@@ -78,6 +84,16 @@ func AddMovie(c *gin.Context) {
 			log.Printf("Неверный формат movieMembers: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Неверный формат movieMembers: %v", err)})
 			return
+		}
+		for ind, mm := range movieMembers {
+			movieMembers[ind].MovieID = selectedMovies[len(selectedMovies)-1].Id + 1
+			var member models.Member
+			if err := utils.Db.First(&member, mm.MemberID).Error; err != nil {
+				log.Println("Ошибка получения учасника: ", err)
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintln("Ошибка получения учасника: ", err)})
+				return
+			}
+			movieMembers[ind].Member = member
 		}
 	} else {
 		movieMembers = []models.MovieMember{}
@@ -338,6 +354,16 @@ func UpdateMovie(c *gin.Context) {
 			log.Println("Ошибка парсинга участников фиильмов: ", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintln("Ошибка парсинга участников фиильмов: ", err)})
 			return
+		}
+		for ind, mm := range movieMembers {
+			movieMembers[ind].MovieID = movie.Id
+			var member models.Member
+			if err := utils.Db.First(&member, mm.MemberID).Error; err != nil {
+				log.Println("Ошибка получения учасника: ", err)
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintln("Ошибка получения учасника: ", err)})
+				return
+			}
+			movieMembers[ind].Member = member
 		}
 		if err := utils.Db.Model(&movie).Association("MovieMembers").Replace(movieMembers); err != nil {
 			log.Printf("Ошибка обновления участников: %v", err)

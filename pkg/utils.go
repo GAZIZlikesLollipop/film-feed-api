@@ -58,9 +58,13 @@ func ReplaceFile(
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошиибка парсиинга URL", err)})
 		return "", err
 	}
-	if err := os.Remove(fmt.Sprintf("%s%s", absolutePath, preFile.Path)); err != nil {
-		log.Println("Ошиибка удаления файла: ", err)
-		return "", err
+	delPath := fmt.Sprintf("%s%s", absolutePath, preFile.Path)
+	_, exist := os.Stat(delPath)
+	if exist == nil {
+		if err := os.Remove(delPath); err != nil {
+			log.Println("Ошиибка удаления файла: ", err)
+			return "", err
+		}
 	}
 
 	file, err := c.FormFile(field)

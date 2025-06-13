@@ -40,7 +40,7 @@ func AddMember(c *gin.Context) {
 				return
 			}
 			var movie models.Movie
-			if err := utils.Db.First(&movie, movieID); err != nil {
+			if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member").First(&movie, movieID).Error; err != nil {
 				log.Printf("Фильм %d не найдена: %v", movieID, err)
 				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Фильм %d не найдена", movieID)})
 				return
@@ -173,6 +173,15 @@ func UpdateMember(c *gin.Context) {
 		}
 		member.BirthDate = birthDate
 	}
+	deathDateStr := c.PostForm("deathDate")
+	if deathDate, err := time.Parse(layout, deathDateStr); deathDateStr != "" {
+		if err != nil {
+			log.Println("Ошибка преобразования даты: ", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка преобразования даты: ", err)})
+			return
+		}
+		member.DeathDate = deathDate
+	}
 
 	if biography := c.PostForm("biography"); biography != "" {
 		member.Biography = biography
@@ -192,7 +201,7 @@ func UpdateMember(c *gin.Context) {
 				return
 			}
 			var movie models.Movie
-			if err := utils.Db.First(&movie, movieID).Error; err != nil {
+			if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member").First(&movie, movieID).Error; err != nil {
 				log.Printf("Фильм %d не найдена: %v", movieID, err)
 				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Фильм %d не найдена", movieID)})
 				return

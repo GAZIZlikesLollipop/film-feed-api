@@ -3,11 +3,12 @@ package models
 import "time"
 
 type MovieMember struct {
-	MovieID   int64    `json:"movieId" gorm:"primaryKey;autoIncrement:false;index"`
 	MemberID  int64    `json:"memberId" gorm:"primaryKey;autoIncrement:false;index"`
 	Character string   `json:"character,omitempty" gorm:"default:NULL"`
 	Roles     []string `json:"roles" gorm:"type:text;serializer:json"`
-	Member    Member   `json:"member" gorm:"foreignKey:MemberID"`
+
+	MovieID int64  `json:"movieId" gorm:"primaryKey;autoIncrement:false;index"`
+	Member  Member `json:"member" gorm:"foreignKey:MemberID"`
 }
 
 type Member struct {
