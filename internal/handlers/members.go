@@ -161,7 +161,7 @@ func UpdateMember(c *gin.Context) {
 	var member models.Member
 	id := c.Param("id")
 
-	if err := utils.Db.First(&member, id).Error; err != nil {
+	if err := utils.Db.Preload("FeaturedFilms").First(&member, id).Error; err != nil {
 		log.Println("Фильм не найден", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Фильм не найден"})
 		return
@@ -208,14 +208,16 @@ func UpdateMember(c *gin.Context) {
 			movieID, err := strconv.ParseInt(idStr, 10, 64)
 			if err != nil {
 				log.Printf("Неверный ID участника: %s", idStr)
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Неверный ID участника: %s", idStr)})
-				return
+				// c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Неверный ID участника: %s", idStr)})
+				// return
+				break
 			}
 			var movie models.Movie
 			if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member").First(&movie, movieID).Error; err != nil {
 				log.Printf("Фильм %d не найдена: %v", movieID, err)
-				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Фильм %d не найдена", movieID)})
-				return
+				// c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Фильм %d не найдена", movieID)})
+				// return
+				break
 			}
 			featuredFilms = append(featuredFilms, movie)
 		}
@@ -244,6 +246,12 @@ func UpdateMember(c *gin.Context) {
 	if err := utils.Db.Save(&member).Error; err != nil {
 		log.Printf("Ошибка обновления учатнсика: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Ошибка обновления участника: %v", err)})
+		return
+	}
+
+	if err := utils.Db.Preload("FeaturedFilms").First(&member, id).Error; err != nil {
+		log.Println("Фильм не найден", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Фильм не найден"})
 		return
 	}
 

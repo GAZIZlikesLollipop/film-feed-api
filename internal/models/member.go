@@ -4,7 +4,7 @@ import "time"
 
 type MovieMember struct {
 	MemberID  int64    `json:"memberId" gorm:"primaryKey;autoIncrement:false;index"`
-	Character string   `json:"character,omitempty" gorm:"default:NULL"`
+	Character *string  `json:"character" gorm:"default:NULL"`
 	Roles     []string `json:"roles" gorm:"type:text;serializer:json"`
 
 	MovieID int64  `json:"movieId" gorm:"primaryKey;autoIncrement:false;index"`

@@ -140,7 +140,7 @@ func GetMovies(c *gin.Context) {
 func GetMovie(c *gin.Context) {
 	id := c.Param("id")
 	var movie models.Movie
-	if err := utils.Db.Preload("MovieMembers.Member.FeaturedFilms").Preload("Genres").First(&movie, id); err != nil {
+	if err := utils.Db.Preload("MovieMembers.Member.FeaturedFilms").Preload("Genres").First(&movie, id).Error; err != nil {
 		log.Println("Фильм не найден", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Фильм не найден"})
 		return
@@ -370,11 +370,14 @@ func UpdateMovie(c *gin.Context) {
 			}
 			movieMembers[ind].Member = member
 		}
-		if err := utils.Db.Model(&movie).Association("MovieMembers").Replace(movieMembers); err != nil {
-			log.Printf("Ошибка обновления участников: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка обновления участников"})
-			return
+		for _, member := range movieMembers {
+			if err := utils.Db.Model(&models.MovieMember{}).Where(&models.MovieMember{MovieID: movie.Id, MemberID: member.MemberID}).Save(&member).Error; err != nil && len(movieMembers) <= 0 {
+				log.Printf("Ошибка обновления участников: %v", err)
+				movieMembers = []models.MovieMember{}
+				break
+			}
 		}
+		movie.MovieMembers = movieMembers
 	}
 
 	if err := utils.Db.Save(&movie).Error; err != nil {
