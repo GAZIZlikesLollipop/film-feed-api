@@ -34,21 +34,22 @@ func AddMovie(c *gin.Context) {
 	budget, _ := strconv.ParseInt(c.PostForm("budget"), 10, 64)
 	boxOffice, _ := strconv.ParseInt(c.PostForm("boxOffice"), 10, 64)
 
-	moviePath, err := utils.SaveFile(c, "movieURL", name, "movie-videos")
+	editedName := strings.ReplaceAll(name, " ", "")
+	moviePath, err := utils.SaveFile(c, "movieURL", editedName, "movie-videos")
 	if err != nil {
 		log.Println("Ошибка получения пути файла: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
 		return
 	}
 
-	trailerPath, err := utils.SaveFile(c, "trailerURL", fmt.Sprintf("%s-trailer", name), "movie-trailers")
+	trailerPath, err := utils.SaveFile(c, "trailerURL", fmt.Sprintf("%s-trailer", editedName), "movie-trailers")
 	if err != nil {
 		log.Println("Ошибка получения пути файла: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
 		return
 	}
 
-	posterPath, err := utils.SaveFile(c, "posterURL", name, "movie-posters")
+	posterPath, err := utils.SaveFile(c, "posterURL", editedName, "movie-posters")
 	if err != nil {
 		log.Println("Ошибка получения пути файла: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
@@ -231,8 +232,10 @@ func UpdateMovie(c *gin.Context) {
 		return
 	}
 
+	editedName := strings.ReplaceAll(movie.Name, " ", "")
 	if name := c.PostForm("name"); name != "" {
 		movie.Name = name
+		editedName = strings.ReplaceAll(name, " ", "")
 	}
 	if durationStr := c.PostForm("duration"); durationStr != "" {
 		duration, err := strconv.Atoi(durationStr)
@@ -299,7 +302,7 @@ func UpdateMovie(c *gin.Context) {
 
 	if _, err := c.FormFile("movieURL"); err == nil {
 		prePath := movie.MovieURL
-		filePath, err := utils.ReplaceFile(c, prePath, "movieURL", movie.Name, "movie-videos")
+		filePath, err := utils.ReplaceFile(c, prePath, "movieURL", editedName, "movie-videos")
 		if err != nil {
 			log.Println("Ошибка получения пути файла: ", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
@@ -309,7 +312,7 @@ func UpdateMovie(c *gin.Context) {
 	}
 	if _, err := c.FormFile("posterURL"); err == nil {
 		prePath := movie.PosterURL
-		filePath, err := utils.ReplaceFile(c, prePath, "posterURL", movie.Name, "movie-posters")
+		filePath, err := utils.ReplaceFile(c, prePath, "posterURL", editedName, "movie-posters")
 		if err != nil {
 			log.Println("Ошибка получения пути файла: ", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
@@ -319,7 +322,7 @@ func UpdateMovie(c *gin.Context) {
 	}
 	if _, err := c.FormFile("trailerURL"); err == nil {
 		prePath := movie.TrailerURL
-		filePath, err := utils.ReplaceFile(c, prePath, "trailerURL", movie.Name, "movie-trailers")
+		filePath, err := utils.ReplaceFile(c, prePath, "trailerURL", editedName, "movie-trailers")
 		if err != nil {
 			log.Println("Ошибка получения пути файла: ", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})

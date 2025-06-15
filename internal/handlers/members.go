@@ -36,7 +36,7 @@ func AddMember(c *gin.Context) {
 		for _, idStr := range ids {
 			movieID, err := strconv.ParseInt(idStr, 10, 64)
 			if err != nil {
-				log.Printf("Неверный ID участника: %s", idStr)
+				log.Printf("Неверный ID фильма: %s", idStr)
 				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Неверный ID участника: %s", idStr)})
 				return
 			}
@@ -55,7 +55,7 @@ func AddMember(c *gin.Context) {
 		featuredFilms = []models.Movie{}
 	}
 
-	photoPath, err := utils.SaveFile(c, "photo", name, "member-photos")
+	photoPath, err := utils.SaveFile(c, "photo", strings.ReplaceAll(name, " ", ""), "member-photos")
 	if err != nil {
 		log.Println("Ошибка получения пути файла: ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
@@ -166,9 +166,11 @@ func UpdateMember(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Фильм не найден"})
 		return
 	}
+	editedName := strings.ReplaceAll(member.Name, " ", "")
 
 	if name := c.PostForm("name"); name != "" {
 		member.Name = name
+		editedName = strings.ReplaceAll(member.Name, " ", "")
 	}
 	if roles := c.PostFormArray("roles"); len(roles) != 0 {
 		member.Roles = roles
@@ -208,15 +210,11 @@ func UpdateMember(c *gin.Context) {
 			movieID, err := strconv.ParseInt(idStr, 10, 64)
 			if err != nil {
 				log.Printf("Неверный ID участника: %s", idStr)
-				// c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Неверный ID участника: %s", idStr)})
-				// return
 				break
 			}
 			var movie models.Movie
 			if err := utils.Db.Preload("Genres").Preload("MovieMembers.Member").First(&movie, movieID).Error; err != nil {
 				log.Printf("Фильм %d не найдена: %v", movieID, err)
-				// c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Фильм %d не найдена", movieID)})
-				// return
 				break
 			}
 			featuredFilms = append(featuredFilms, movie)
@@ -234,7 +232,7 @@ func UpdateMember(c *gin.Context) {
 
 	if _, err := c.FormFile("photo"); err == nil {
 		prePath := member.Photo
-		filePath, err := utils.ReplaceFile(c, prePath, "photo", member.Name, "member-photos")
+		filePath, err := utils.ReplaceFile(c, prePath, "photo", editedName, "member-photos")
 		if err != nil {
 			log.Println("Ошибка получения пути файла: ", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintln("Ошибка получения пути файла: ", err)})
